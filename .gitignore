@@ -1,0 +1,38 @@
+Environment Variables
+
+.env
+*.env
+.env.local
+
+Python Virtual Environments & Caching
+
+venv/
+env/
+ENV/
+pycache/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+Databases
+
+*.db
+*.sqlite3
+backend/app.db
+
+Node / Next.js Build Outputs & Dependencies
+
+node_modules/
+.next/
+out/
+build/
+dist/
+*.log
+
+Operating System & IDE Files
+
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
