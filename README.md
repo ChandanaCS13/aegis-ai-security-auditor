@@ -1,169 +1,556 @@
-🛡️ AegisAI Enterprise Security Auditor
+# 🛡️ AegisAI Enterprise — AI-Powered Security Auditor
 
-Automated Code Security Audit & Compliance Engine
+**Automated Code Security Auditing, Vulnerability Detection & Compliance Analysis**
 
-AegisAI Enterprise is a production-ready AI security platform designed to audit code snippets and public GitHub repositories for security vulnerabilities, software bugs, and compliance risks. Powered by a Next.js frontend, FastAPI backend, SQLite database, and Google Gemini AI, it provides actionable code remediations, vulnerability metrics, health scores, and automated CI/CD pull request scanning.
+AegisAI Enterprise is an AI-powered security auditing platform designed to analyze source code snippets and public GitHub repositories for potential security vulnerabilities, software bugs, and compliance risks.
 
-🏛️ System Architecture
+Built using **Next.js, FastAPI, SQLite, and Google Gemini AI**, AegisAI combines static code inspection with AI-driven security analysis to provide actionable vulnerability reports, code remediation suggestions, security health scores, and automated CI/CD pull request scanning.
 
-AegisAI Enterprise follows a modern microservice-inspired modular architecture that decouples the frontend user interface, backend processing engine, local persistence storage, and AI analysis core.
+The platform provides two primary ways to perform security audits:
 
-┌────────────────────────────────────────────────────────────────────────┐
-│                          NEXT.JS FRONTEND (UI)                         │
-│  ┌───────────────────────┬──────────────────────┬───────────────────┐  │
-│  │   Snippet Auditor     │   GitHub Repo Scan   │  Audit Analytics  │  │
-│  └───────────────────────┴──────────────────────┴───────────────────┘  │
-└───────────────────────────────────┬────────────────────────────────────┘
-                                    │ HTTP / REST API (Port 8000)
-┌───────────────────────────────────▼────────────────────────────────────┐
-│                           FASTAPI BACKEND                              │
-│  ┌─────────────────────────┬───────────────────┬────────────────────┐  │
-│  │    APIs & Controllers   │  SQLite (app.db)  │  GitHub Scanner    │  │
-│  │ (/api/review, /audits)  │   Audit History   │  Raw URL Fetcher   │  │
-│  └─────────────────────────┴─────────┬─────────┴────────────────────┘  │
-└──────────────────────────────────────┼─────────────────────────────────┘
-                                       │ Async Prompt / Analysis Engine
-                                       ▼
-                         ┌──────────────────────────┐
-                         │   Gemini AI API Engine   │
-                         └──────────────────────────┘
+- **Web Dashboard:** Submit code snippets or public GitHub repository URLs for security analysis.
+- **CLI & CI/CD Integration:** Scan local source code automatically during development and GitHub Actions workflows.
 
+---
 
-🔍 System Components & Responsibilities
+## 🏛️ System Architecture
 
-1. Frontend Layer (Next.js + Tailwind CSS)
+AegisAI follows a **modular backend architecture** with clearly separated frontend, API, scanning, AI analysis, and persistence layers.
 
-Interactive Security Audit Dashboard: Built with Next.js App Router and styled using Tailwind CSS for real-time security reporting.
+Rather than introducing unnecessary microservices, the application uses a centralized FastAPI backend with independently organized modules. This keeps the system maintainable while allowing individual components to evolve independently.
 
-Code Editor & Snippet Scanner: Supports pasting snippets with auto-detected line counts, programming languages, and direct AI analysis.
+### High-Level Architecture
 
-Vulnerability & Diff Viewer: Displays calculated security health scores (0–100), categorized threat findings (Critical, High, Medium, Low), and proposed code diff remediation blocks with copy-to-clipboard actions.
+```mermaid
+flowchart TB
+    USER(["Developer / Security Engineer"])
+    
+    subgraph ENTRY["Application Entry Points"]
+        UI["Next.js Frontend"]
+        CLI["CLI Security Auditor"]
+        GHA["GitHub Actions CI/CD"]
+    end
 
-Audit History & Compliance Dashboard: Fetches audit records stored in SQLite with full Markdown and JSON report export capabilities.
+    subgraph BACKEND["FastAPI Backend — Port 8000"]
+        API["REST API Layer"]
+        VALID["Input Validation & Request Handling"]
+        
+        subgraph SERVICES["Core Application Services"]
+            SNIP["Snippet Audit Service"]
+            REPO["GitHub Repository Scanner"]
+            FETCH["Remote File Fetcher"]
+            ENGINE["Security Audit Engine"]
+            PARSER["AI Response Parser & Validator"]
+        end
+    end
 
-2. Backend API Engine (FastAPI)
+    subgraph AI["AI Analysis Layer"]
+        PROMPT["Security Prompt Builder"]
+        GEMINI["Google Gemini API"]
+        RESULT["Structured Vulnerability Analysis"]
+    end
 
-POST /api/review: Accepts code snippets and target language, orchestrates the Gemini AI prompt chain, parses structured vulnerability output, and persists audit logs.
+    DB[("SQLite Database<br/>Audit History & Findings")]
 
-POST /api/review-url: Parses public GitHub repository URLs, downloads raw code files remotely, and executes full security reviews without requiring local clones.
+    REPORT["Security Reports & Analytics"]
 
-GET /api/audits & GET /api/audits/{id}: Exposes history logs and detailed vulnerability metadata for client-side analytics.
+    USER --> UI
+    USER --> CLI
 
-GET /api/export/{id}: Generates formatted downloadable compliance reports in Markdown and JSON formats.
+    UI -->|"HTTP / REST"| API
+    CLI --> ENGINE
+    GHA --> CLI
 
-3. AI Security Core (Google Gemini API)
+    API --> VALID
+    VALID --> SNIP
+    VALID --> REPO
 
-Analyzes source code against standard cybersecurity frameworks (OWASP Top 10, CWE).
+    REPO --> FETCH
+    FETCH --> ENGINE
+    SNIP --> ENGINE
 
-Generates structured output containing:
+    ENGINE --> PROMPT
+    PROMPT --> GEMINI
+    GEMINI --> RESULT
+    RESULT --> PARSER
 
-Overall repository/file health score.
+    PARSER --> DB
+    DB --> REPORT
+    REPORT -->|"JSON / REST Response"| UI
+```
 
-Line-by-line vulnerability mappings.
+### Architecture Overview
 
-Executive summaries and actionable diff remedies.
+| Layer | Technology | Responsibility |
+|---|---|---|
+| Presentation | Next.js + Tailwind CSS | Dashboard, code editor, reports and analytics |
+| API | FastAPI | Request handling, validation and API orchestration |
+| Scanning | Python | Snippet analysis, repository fetching and file processing |
+| AI Engine | Google Gemini API | Vulnerability analysis and remediation suggestions |
+| Persistence | SQLite | Audit history, findings and report metadata |
+| Automation | Python CLI + GitHub Actions | Automated repository and pull request scanning |
 
-4. Persistence Storage (SQLite)
+### Application Processing Flow
 
-Lightweight relational persistence storing complete historical records of performed audits, code diffs, vulnerability severities, and timestamps (app.db).
+1. A developer submits a code snippet or repository URL through the dashboard.
+2. Next.js sends the request to the FastAPI backend.
+3. FastAPI validates the input and forwards it to the appropriate scanning service.
+4. The scanning service prepares the source code for analysis.
+5. The security audit engine constructs the analysis request.
+6. Google Gemini analyzes the code and generates structured security findings.
+7. The backend validates and processes the AI response.
+8. Audit results are stored in SQLite.
+9. The frontend receives the report and displays vulnerabilities, health scores, and remediation suggestions.
 
-5. CI/CD & Automation (audit_cli.py)
+The CLI follows the same core auditing logic but can operate directly on local source files without requiring the web dashboard.
 
-Command-line utility for automated file scanning during continuous integration (e.g., GitHub Actions PR checks), enforcing non-zero exit codes when critical security threats are found.
+---
 
-🔄 Data Flow Summary
+## 🔍 System Components & Responsibilities
 
-User Action / CI Event: Code snippet or GitHub file URL submitted via the Next.js Dashboard or audit_cli.py.
+### 1. Frontend Layer — Next.js + Tailwind CSS
 
-Backend Processing: FastAPI processes the payload, cleans parameters, and constructs the auditing prompt schema.
+The frontend provides an interactive security auditing dashboard for developers and security engineers.
 
-AI Analysis: Payload is transmitted to Gemini AI; structured JSON containing scores, vulnerabilities, and code fixes is returned.
+**Key Features:**
 
-Persistence: FastAPI writes audit metadata, vulnerability findings, and code diff fixes into SQLite (app.db).
+**Security Audit Dashboard**
+- Overview of completed security audits.
+- Security health scores (0–100).
+- Vulnerability distribution by severity.
+- Audit history and recent scanning activity.
 
-UI Rendering: Next.js updates the dashboard asynchronously with gauges, vulnerability badges, diff blocks, and export buttons.
+**Code Editor & Snippet Auditor**
+- Submit source code snippets for analysis.
+- Language selection and automatic line counting.
+- Direct AI-powered security analysis.
+- Display findings with relevant source-code line references.
 
-⚡ Complete Quickstart Guide
+**GitHub Repository Scanner**
+- Submit public GitHub repository URLs.
+- Fetch supported source files for analysis.
+- Display repository-level security findings.
+- Present findings grouped by severity and file.
 
-Prerequisites
+**Vulnerability & Remediation Viewer**
+- Critical, High, Medium and Low severity classifications.
+- Vulnerability descriptions and affected code locations.
+- Suggested secure code replacements.
+- Proposed code diff blocks.
+- Copy-to-clipboard functionality.
 
-Python: v3.10+
+**Audit History & Reports**
+- View previous security audits.
+- Access detailed vulnerability information.
+- Export reports in Markdown and JSON formats.
 
-Node.js: v18+
+### 2. Backend API Engine — FastAPI
 
-Gemini API Key: Obtainable from Google AI Studio.
+FastAPI acts as the central application layer responsible for request processing, scanning orchestration, AI integration, and database operations.
 
-Step 1: Backend Setup (FastAPI)
+**Core API Endpoints**
 
-# Navigate to backend directory
+| Method | Endpoint | Responsibility |
+|---|---|---|
+| POST | `/api/review` | Analyze submitted source code snippets |
+| POST | `/api/review-url` | Scan supported files from public GitHub repositories |
+| GET | `/api/audits` | Retrieve audit history |
+| GET | `/api/audits/{id}` | Retrieve a specific audit report |
+| GET | `/api/export/{id}` | Export an audit report |
+
+**Backend Responsibilities:**
+
+- Validate incoming API requests.
+- Handle snippet and repository scanning workflows.
+- Fetch supported source files from public GitHub repositories.
+- Construct structured prompts for AI analysis.
+- Process and validate AI-generated responses.
+- Store audit history and vulnerability metadata.
+- Provide report retrieval and export functionality.
+
+**Repository Scanner**
+
+The GitHub scanner is responsible for:
+- Parsing supported public GitHub repository URLs.
+- Identifying supported source files.
+- Fetching source files without requiring a local repository clone.
+- Filtering unsupported files and oversized inputs.
+- Passing eligible source code to the security audit engine.
+
+### 3. AI Security Core — Google Gemini API
+
+The AI analysis layer performs security-focused code reviews using Google Gemini.
+
+It evaluates source code against established security guidance, including:
+
+- OWASP Top 10.
+- Common Weakness Enumeration (CWE).
+- Secure coding practices.
+- Common authentication and authorization weaknesses.
+- Input validation and injection risks.
+- Sensitive information exposure.
+
+**AI Analysis Output**
+
+The backend expects structured analysis containing:
+
+| Output | Description |
+|---|---|
+| Health Score | Overall security assessment score (0–100) |
+| Severity | Critical, High, Medium or Low |
+| Vulnerability | Description of the identified issue |
+| Location | Affected file and line references, where available |
+| Explanation | Why the code may be vulnerable |
+| Remediation | Suggested secure implementation |
+| Code Diff | Proposed code changes, where supported |
+
+AI-generated findings should be treated as recommendations, not guaranteed vulnerability detections. Results must be validated before being treated as confirmed security issues.
+
+### 4. Persistence Layer — SQLite
+
+SQLite provides lightweight relational persistence for audit records and historical analysis.
+
+**Stored Information:**
+- Audit identifiers and timestamps.
+- Source type and file metadata.
+- Security health scores.
+- Vulnerability descriptions.
+- Severity classifications.
+- Suggested code remediations.
+- Structured audit reports.
+
+The database allows users to retrieve historical reports and monitor security audit activity.
+
+### 5. CLI & CI/CD Automation
+
+AegisAI includes a Python command-line utility (`audit_cli.py`) for integrating security audits into automated development workflows.
+
+**CLI Capabilities:**
+- Scan local source-code directories.
+- Run security analysis during CI/CD execution.
+- Generate security audit findings.
+- Enforce configurable severity thresholds.
+- Return non-zero exit codes when configured security conditions are met.
+
+**Example CLI Execution:**
+
+```bash
+python audit_cli.py --path ./src --fail-on critical
+```
+
+This command scans the specified source directory and fails the CI job when a Critical finding is detected, assuming the CLI implements this threshold correctly.
+
+---
+
+## 🔄 End-to-End Data Flow
+
+### Web Dashboard Audit
+
+```mermaid
+sequenceDiagram
+    participant U as Developer
+    participant F as Next.js
+    participant B as FastAPI
+    participant S as Scanner
+    participant AI as Gemini API
+    participant DB as SQLite
+
+    U->>F: Submit code / GitHub URL
+    F->>B: POST /api/review or /api/review-url
+    B->>B: Validate request
+    B->>S: Process source code
+    S-->>B: Prepared source files
+    B->>AI: Submit security analysis
+    AI-->>B: Structured findings
+    B->>B: Validate AI response
+    B->>DB: Persist audit results
+    DB-->>B: Saved audit record
+    B-->>F: Return audit report
+    F-->>U: Display security dashboard
+```
+
+### CI/CD Pull Request Audit
+
+```mermaid
+flowchart TD
+    A["Developer Creates Pull Request"]
+    B["GitHub Actions Workflow Triggered"]
+    C["Checkout Repository"]
+    D["Install Python Dependencies"]
+    E["Run AegisAI CLI"]
+    F["Scan Local Source Files"]
+    G["Perform AI Security Analysis"]
+    H{"Critical Findings?"}
+    I["CI Job Fails"]
+    J["CI Job Passes"]
+    K["Developer Reviews Findings"]
+
+    A --> B --> C --> D --> E --> F --> G --> H
+    H -->|Yes| I
+    H -->|No| J
+    I --> K
+```
+
+---
+
+## 🔐 Security & Reliability Considerations
+
+Because AegisAI processes potentially untrusted source code and communicates with an external AI provider, the following safeguards are important:
+
+**Input Validation**
+- Validate code snippets, repository URLs and request sizes.
+- Restrict supported file extensions.
+- Apply request timeouts and resource limits.
+
+**Repository Scanning**
+- Support public repositories only unless authenticated access is explicitly implemented.
+- Restrict remote fetching to trusted GitHub hosts.
+- Prevent server-side request forgery (SSRF).
+- Avoid executing downloaded repository code.
+
+**AI Security**
+- Treat repository content as untrusted input.
+- Defend against prompt injection embedded in source files.
+- Validate AI responses against a defined schema.
+- Never execute AI-generated remediation automatically.
+
+**Secrets Management**
+- Store Gemini API keys in environment variables.
+- Use GitHub Actions Secrets for CI/CD credentials.
+- Never expose API keys in frontend code or commit them to Git.
+
+**Database & API**
+- Validate database operations.
+- Implement authentication and authorization where required.
+- Apply appropriate rate limits.
+- Handle failures from external AI services gracefully.
+
+---
+
+## ⚡ Complete Quickstart Guide
+
+### Prerequisites
+
+Install the following before starting:
+
+- Python 3.10+
+- Node.js 18+
+- npm
+- Git
+- Google Gemini API Key
+
+Obtain an API key from [Google AI Studio](https://aistudio.google.com/).
+
+### Step 1: Clone the Repository
+
+```bash
+git clone <YOUR_GITHUB_REPOSITORY_URL>
+cd AegisAI
+```
+
+### Step 2: Backend Setup — FastAPI
+
+Navigate to the backend directory:
+
+```bash
 cd backend
+```
 
-# Create and activate Python virtual environment
+Create a virtual environment:
+
+```bash
 python -m venv venv
+```
 
-# On Windows PowerShell:
+Activate the environment.
+
+**Windows PowerShell:**
+
+```powershell
 .\venv\Scripts\Activate.ps1
-# On macOS/Linux:
-# source venv/bin/activate
+```
 
-# Install dependencies
+**macOS / Linux:**
+
+```bash
+source venv/bin/activate
+```
+
+Install dependencies:
+
+```bash
 pip install -r requirements.txt
+```
 
-# Create environment configuration file (.env)
-echo "GEMINI_API_KEY=your_actual_api_key_here" > .env
+Create a `.env` file inside the backend directory:
 
-# Start FastAPI server
+```env
+GEMINI_API_KEY=your_actual_api_key_here
+```
+
+Start the FastAPI development server:
+
+```bash
 python -m uvicorn app.main:app --reload --port 8000
+```
 
+Backend API:
 
-Step 2: Frontend Setup (Next.js)
+`http://localhost:8000`
 
-# Open a new terminal and navigate to frontend directory
+Interactive API documentation:
+
+`http://localhost:8000/docs`
+
+### Step 3: Frontend Setup — Next.js
+
+Open another terminal and navigate to the frontend directory:
+
+```bash
 cd frontend
+```
 
-# Install Node modules
+Install dependencies:
+
+```bash
 npm install
+```
 
-# Run dev server
+Create a `.env.local` file:
+
+```env
+NEXT_PUBLIC_API_URL=http://localhost:8000
+```
+
+Start the development server:
+
+```bash
 npm run dev
+```
 
+Open the application:
 
-Open http://localhost:3000 in your browser to access the fully functional dark-themed cybersecurity dashboard.
+**http://localhost:3000**
 
-🤖 GitHub Actions CI/CD Integration
+You can now access the AegisAI Enterprise security auditing dashboard.
 
-To run automated AI security checks on Pull Requests, add .github/workflows/audit.yml to your repository:
+---
 
-name: AegisAI Automated Security Check
+## 🤖 GitHub Actions CI/CD Integration
+
+AegisAI supports automated security scanning during GitHub pull request workflows using its Python CLI.
+
+Create the following workflow file in your repository:
+
+`.github/workflows/audit.yml`
+
+```yaml
+name: AegisAI Automated Security Audit
 
 on:
   pull_request:
-    branches: [ main ]
+    branches:
+      - main
+
+permissions:
+  contents: read
 
 jobs:
   security-audit:
+    name: Security Vulnerability Scan
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout Repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: "3.10"
 
       - name: Install Dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install requests google-genai pydantic
+          pip install -r backend/requirements.txt
 
-      - name: Run AegisAI CLI Audit
+      - name: Run AegisAI Security Audit
         env:
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
         run: |
           python audit_cli.py --path ./src --fail-on critical
+```
 
+**Important:** Adjust the dependency file and CLI path according to the actual repository structure. The CLI must support the specified arguments and read the Gemini key from the environment. Configure the GitHub repository secret `GEMINI_API_KEY` before enabling the workflow.
 
-📄 License
+The workflow automatically runs when a pull request targets the `main` branch.
 
-Distributed under the MIT License. See LICENSE for more details.
+If a configured Critical vulnerability is detected, the CLI returns a non-zero exit code and the security audit job fails.
+
+---
+
+## 📁 Suggested Project Structure
+
+```text
+AegisAI/
+│
+├── frontend/
+│   ├── app/
+│   ├── components/
+│   ├── hooks/
+│   ├── lib/
+│   ├── public/
+│   └── package.json
+│
+├── backend/
+│   ├── app/
+│   │   ├── main.py
+│   │   ├── api/
+│   │   ├── services/
+│   │   ├── scanners/
+│   │   ├── ai/
+│   │   ├── database/
+│   │   └── schemas/
+│   │
+│   ├── requirements.txt
+│   └── .env
+│
+├── .github/
+│   └── workflows/
+│       └── audit.yml
+│
+├── audit_cli.py
+├── .gitignore
+├── LICENSE
+└── README.md
+```
+
+*This is a suggested logical organization. Adapt it to the actual files and modules in the implementation.*
+
+---
+
+## 🚀 Future Enhancements
+
+Potential improvements for future versions include:
+
+- Support for additional programming languages.
+- Integration with traditional static analysis tools such as Bandit, Semgrep and ESLint.
+- GitHub App integration for automated pull request comments.
+- Incremental scanning of changed files instead of entire repositories.
+- Configurable security policies and severity thresholds.
+- Role-based access control.
+- PostgreSQL support for larger deployments.
+- Background task processing for large repository audits.
+- Docker-based deployment.
+- Security trend analytics and compliance reporting.
+- Automated regression checks for previously identified vulnerabilities.
+
+---
+
+## 📄 License
+
+This project is distributed under the MIT License. See the `LICENSE` file for details.
+
+---
+
+**AegisAI Enterprise — Intelligent Security. Safer Code. Smarter Development.**
