@@ -534,7 +534,7 @@ AegisAI/
 Potential improvements for future versions include:
 
 - Support for additional programming languages.
-- Integration with traditional static analysis tools such as Bandit, Semgrep and ESLint.
+- Integration with traditional static analysis tools such as ESLint.
 - GitHub App integration for automated pull request comments.
 - Incremental scanning of changed files instead of entire repositories.
 - Configurable security policies and severity thresholds.
@@ -544,12 +544,6 @@ Potential improvements for future versions include:
 - Docker-based deployment.
 - Security trend analytics and compliance reporting.
 - Automated regression checks for previously identified vulnerabilities.
-
----
-
-## 📄 License
-
-This project is distributed under the MIT License. See the `LICENSE` file for details.
 
 ---
 
